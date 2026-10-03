@@ -99,10 +99,12 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 <div class="mod" id="mod"><div class="box" id="mb"></div></div>
 <script>
 const CLIENT_ID='473283733703-tirc9f7vpvl2jkn64jala2cf5kv47oib.apps.googleusercontent.com';
-const SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
+const SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.install https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
 const $=s=>document.querySelector(s),cv=$('#cv'),G=$('#g'),ed=$('#ed'),ne=$('#ne');
 const uid=()=>Math.random().toString(36).slice(2,10),esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let M,sel,editing=false,hist=[],fut=[],tmr,view={z:1,x:0,y:0},raf=0,tok=null,tc=null,user=null,fold=null,imgFold=null,busy=false,again=false,waiters=[],auto=false,pending=false;
+let driveState=null,launchFolderId=null;
+try{const s=new URLSearchParams(location.search).get('state');if(s)driveState=JSON.parse(s)}catch(e){driveState=null}
 let pinId=null,noteDirty=false;
 // ---------- icons / toolbar
 const P={child:'<rect x="3" y="9" width="7" height="6" rx="1.5"/><path d="M10 12h3M13 6v12M13 6h3M13 18h3"/><rect x="16" y="3.5" width="5" height="5" rx="1.2"/><rect x="16" y="15.5" width="5" height="5" rx="1.2"/>',
@@ -182,7 +184,7 @@ function norm(m){if(!m.pages){m.pages=[{id:uid(),name:'Page 1',nodes:m.nodes,roo
 function local(){try{M.mod=Date.now();flush();localStorage['mmfk:'+M.id]=JSON.stringify(M,rep(0));localStorage['mmfk:last']=M.id}catch(e){setSt('Local storage full','err')}}
 async function saveNow(){local();if(tok){setSt('Saving…','wait');await syncDrive(true)}else{setSt('Saved in this browser','ok');pending=false;noteDone()}}
 async function syncDrive(manual){if(!tok)return;if(busy){again=true;return}if(!navigator.onLine){setSt('Offline — changes stored locally','wait');return}busy=true;
- try{await ensureFolders();const meta={name:M.title+'.mmfk.json',mimeType:'application/json'};if(!M.fileId)meta.parents=[fold];
+ try{const parent=launchFolderId||(!M.fileId?(await ensureFolders(),fold):null);const meta={name:M.title+'.mmfk.json',mimeType:'application/json'};if(!M.fileId&&parent)meta.parents=[parent];
   flush();const r=await up(meta,JSON.stringify(M,rep(1)),'application/json',M.fileId);const j=await r.json();if(!M.fileId){M.fileId=j.id;history.replaceState(null,'','#m='+j.id);local()}
   pending=false;setSt('Saved to your Google Drive','ok');noteDone()}
  catch(e){setSt('Saving failed — Retry','err')}busy=false;if(again){again=false;syncDrive()}}
@@ -199,7 +201,10 @@ $('#wloc').onclick=()=>{$('#wl').classList.remove('on');render(1)};
 async function onTok(r){if(r.error){return}tok=r.access_token;waiters.forEach(w=>w[0]());waiters=[];if(user)return;localStorage['mmfk:signed']=1;
  try{user=await(await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:'Bearer '+tok}})).json()}catch(e){user={}}
  $('#acct').innerHTML=`${user.picture?`<img src="${esc(user.picture)}" referrerpolicy="no-referrer" alt="">`:''}<span title="Saved to your Google Drive">${esc(user.email||user.name||'Signed in')}</span><button class="btn" id="so">Sign out</button>`;$('#so').onclick=signOut;
- localStorage['mmfk:email']=user.email||'';$('#wl').classList.remove('on');setSt('Connected to Google Drive','ok');await ensureFolders();
+ localStorage['mmfk:email']=user.email||'';$('#wl').classList.remove('on');setSt('Connected to Google Drive','ok');
+ if(driveState&&driveState.action==='open'&&Array.isArray(driveState.ids)&&driveState.ids.length){const id=driveState.ids[0];const rk=driveState.resourceKeys&&driveState.resourceKeys[id];try{await loadDrive(id,rk);driveState=null;return}catch(e){toast('Could not open that Drive file with this Google account');driveState=null;return}}
+ if(driveState&&driveState.action==='create'){launchFolderId=driveState.folderId||null;driveState=null;newMap();render(1);commit();await syncDrive(true);launchFolderId=null;return}
+ await ensureFolders();
  const h=(location.hash.match(/m=([\w-]+)/)||[])[1];if(h)try{await loadDrive(h);return}catch(e){toast('Could not open that map with this Google account')}
  const l=await listDrive();if(l.length)openList(l);else{newMap();render(1);commit();syncDrive()}}
 function signOut(){try{google.accounts.oauth2.revoke(tok)}catch(e){}tok=null;user=null;fold=imgFold=null;localStorage.removeItem('mmfk:signed');$('#acct').innerHTML='<button class="btn" data-a="signup">Sign up</button><button class="btn p" data-a="signin">Sign in</button>';setSt('Signed out','');history.replaceState(null,'','#');$('#wl').classList.add('on')}
@@ -211,7 +216,7 @@ async function folder(name,parent){const F='application/vnd.google-apps.folder',
  return(await(await api(D,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,mimeType:F,...(parent?{parents:[parent]}:{})})})).json()).id}
 async function ensureFolders(){if(!fold){fold=await folder('Line MindMap');}if(!imgFold)imgFold=await folder('Images',fold)}
 async function listDrive(){await ensureFolders();return(await(await api(D+'?pageSize=100&orderBy=modifiedTime desc&fields=files(id,name,createdTime,modifiedTime)&q='+encodeURIComponent(`'${fold}' in parents and trashed=false and mimeType='application/json'`))).json()).files}
-async function loadDrive(id){const m=await(await api(`${D}/${id}?alt=media`)).json();if(!m.nodes&&!m.pages)throw 0;adopt(m,id)}
+async function loadDrive(id,resourceKey){const h=resourceKey?{'X-Goog-Drive-Resource-Keys':`${id}=${resourceKey}`}:{},m=await(await api(`${D}/${id}?alt=media`,{headers:h})).json();if(!m.nodes&&!m.pages)throw 0;adopt(m,id)}
 function adopt(m,id){pinId=null;M=norm(m);M.fileId=id||M.fileId;sel=M.root;hist=[snap()];fut=[];view=M.pages[M.cur].view||{z:1,x:innerWidth/2,y:innerHeight/2};$('#mod').classList.remove('on');$('#wl').classList.remove('on');if(M.fileId)history.replaceState(null,'','#m='+M.fileId);render(1);setSt(tok?'Saved to your Google Drive':'Saved in this browser','ok')}
 async function loadImg(n){try{const r=await api(`${D}/${n.imgId}?alt=media`);n.img=URL.createObjectURL(await r.blob());render()}catch(e){n._l=0}}
 function openList(l){$('#mb').innerHTML='<h2>Your mind maps</h2><p>'+(tok?'Stored in your Google Drive › Line MindMap':'Stored in this browser')+'</p><button class="btn p" data-n="1" style="margin:0 0 8px">＋ New mind map</button>'+(l.length?l.map(m=>`<div class="it" data-o="${m.id}"><b>${esc((m.name||m.title).replace(/\.mmfk\.json$/,''))}</b><br><small>Created ${new Date(m.createdTime||m.created).toLocaleDateString()} · Modified ${new Date(m.modifiedTime||m.mod).toLocaleString()}</small></div>`).join(''):'<p>No maps yet.</p>');$('#mod').classList.add('on')}
