@@ -444,7 +444,7 @@ function syncTableMode(){const on=isTablePage();document.body.classList.toggle('
 const TABLE_ICONS={
   undo:P.undo,redo:P.redo,bold:P.b,italic:P.i,underline:P.u,
   alignLeft:P.al,alignCenter:P.ac,alignRight:P.ar,img:P.img,note:P.note,
-  highlight:'<path d="M5 7h14M5 17h14"/><path d="M8 4l8 16"/>',
+  highlight:'<path d="M6 8h12"/><path d="M8 6l8 8-4 4-8-8z"/><path d="M5 20h14"/>',
   textColor:'<path d="M5 19L12 4l7 15M8 13h8"/><path d="M5 21h14"/>',
   shadeCell:'<rect x="5" y="5" width="14" height="14" rx="2"/><path d="M5 15h14"/>',
   shadeRow:'<rect x="4" y="5" width="16" height="4" rx="1"/><rect x="4" y="10" width="16" height="4" rx="1"/><rect x="4" y="15" width="16" height="4" rx="1"/>',
@@ -476,7 +476,7 @@ function setupTableToolbar(){
   bar.addEventListener('click',e=>{const b=e.target.closest('[data-table-cmd]');if(b)tableToolbarAction(b.dataset.tableCmd)});
 }
 function tableToolbarAction(cmd){if(!isTablePage())return;if(cmd==='undo')return tableUndo();if(cmd==='redo')return tableRedo();if(cmd==='bold')return execTableFormat('bold');if(cmd==='italic')return execTableFormat('italic');if(cmd==='underline')return execTableFormat('underline');if(cmd==='highlight')return execTableFormat('hiliteColor','#fff3a6');if(cmd==='text-color')return execTableFormat('foreColor','#333');if(cmd==='shade-cell')return shadeCell('#F2F4F5');if(cmd==='shade-row')return shadeRow('#F2F4F5');if(cmd==='clear-shade')return clearCellShade();if(cmd==='align-left')return setCellAlign('left');if(cmd==='align-center')return setCellAlign('center');if(cmd==='align-right')return setCellAlign('right');if(cmd==='row-up')return moveTableRow(-1);if(cmd==='row-down')return moveTableRow(1);if(cmd==='col-left')return moveTableCol(-1);if(cmd==='col-right')return moveTableCol(1);if(cmd==='add-row')return currentTable()&&addTableRow(tableSel.ti);if(cmd==='add-col')return currentTable()&&addTableCol(tableSel.ti);if(cmd==='add-table')return addTableBlock();if(cmd==='image')return $('#tfi').click();if(cmd==='notepad'){const p=M.pages[M.cur];p.noteOpen=!p.noteOpen;renderTablePage();dirty()}}
-$('#tablebar').addEventListener('mousedown',e=>{if(e.target.closest('button'))e.preventDefault()});$('#tablebar').addEventListener('click',e=>{const b=e.target.closest('[data-table-cmd]');if(b)tableToolbarAction(b.dataset.tableCmd)});
+setupTableToolbar();
 $('#tableHost').addEventListener('paste',e=>{const cell=e.target.closest?.('[data-table-cell]');if(cell)setTableSelection(cell);if(!isTablePage()||!e.clipboardData)return;const item=[...e.clipboardData.items].find(x=>x.type.startsWith('image/'));if(item){e.preventDefault();insertTableImage(item.getAsFile())}});
 $('#tfi').addEventListener('change',e=>{const f=e.target.files[0];if(f)insertTableImage(f);e.target.value=''});
 function openPageTypePicker(){$('#mb').innerHTML='<div class="page-choice"><h2>Add a new page</h2><p class="page-choice-copy">Choose how you want to work. Your current mind map stays exactly as it is.</p><div class="choice-grid"><button class="page-choice-btn" data-a="add_mindmap_page"><div class="choice-icon">⌘</div><strong>MindMap</strong><small>Start a new visual map with the current keyboard-first workflow.</small></button><button class="page-choice-btn table-choice-btn" data-a="add_table_page"><div class="choice-icon">▦</div><div><strong>Table</strong><small>Create a structured comparison table with compact controls, images, and a general notepad.</small></div></button></div></div>';$('#mod').classList.add('on')}
