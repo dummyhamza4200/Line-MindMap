@@ -210,10 +210,10 @@ body.table-mode #tablebar{display:flex}
 <div class="mod" id="mod"><div class="box" id="mb"></div></div>
 <script>
 const CLIENT_ID='473283733703-tirc9f7vpvl2jkn64jala2cf5kv47oib.apps.googleusercontent.com';
-const SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.install https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
+const SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
 const $=s=>document.querySelector(s),cv=$('#cv'),G=$('#g'),ed=$('#ed'),ne=$('#ne');
 const uid=()=>Math.random().toString(36).slice(2,10),esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let M,sel,editing=false,hist=[],fut=[],tmr,view={z:1,x:0,y:0},raf=0,tok=null,tc=null,user=null,fold=null,imgFold=null,busy=false,again=false,waiters=[],auto=false,pending=false;
+let M,sel,editing=false,hist=[],fut=[],tmr,view={z:1,x:0,y:0},raf=0,tok=null,tc=null,user=null,fold=null,imgFold=null,busy=false,again=false,waiters=[],auto=localStorage['mmfk:auto'] !== '0',pending=false;
 let driveState=null,launchFolderId=null;
 try{const s=new URLSearchParams(location.search).get('state');if(s)driveState=JSON.parse(s)}catch(e){driveState=null}
 let pinId=null,noteDirty=false,preserveEmptyEditNode=false;
@@ -305,7 +305,7 @@ addEventListener('beforeunload',e=>{if(pending&&!auto||busy){e.preventDefault();
 $('#auto').checked=auto;$('#auto').onchange=e=>{auto=e.target.checked;localStorage['mmfk:auto']=auto?1:0;toast(auto?'Auto-save on':'Auto-save off — use Save (Ctrl/Cmd+S)');if(auto&&pending)dirty();else if(!auto)setSt(pending?'Unsaved changes':'Saved','wait');sync_ui()};
 // ---------- Google Drive
 const DEMO=CLIENT_ID.startsWith('YOUR_');
-function gsiReady(){if(DEMO||tc)return;tc=google.accounts.oauth2.initTokenClient({client_id:CLIENT_ID,scope:SCOPE,callback:onTok,error_callback:e=>{waiters.forEach(w=>w[1](e));waiters=[];if(!tok)$('#wmsg').textContent='Sign-in was cancelled or blocked.'}})}
+function gsiReady(){if(DEMO||tc)return;tc=google.accounts.oauth2.initTokenClient({client_id:CLIENT_ID,scope:SCOPE,include_granted_scopes:true,callback:onTok,error_callback:e=>{waiters.forEach(w=>w[1](e));waiters=[];if(!tok)$('#wmsg').textContent='Sign-in was cancelled or blocked.'}})}
 (function(){if(DEMO){$('#wmsg').textContent='Google sign-in is not configured in this copy — add a Client ID to enable Drive.';$('#wsign').disabled=true;return}const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.onload=gsiReady;document.head.appendChild(s)})();
 const signIn=()=>{$('#mod').classList.remove('on');if(!tc)return toast('Google sign-in is not configured yet');tc.requestAccessToken({prompt:localStorage['mmfk:signed']?'':'consent'})};$('#wsign').onclick=signIn;
 function hasSavedLocalWorkspace(){return Object.keys(localStorage).some(k=>k.startsWith('mmfk:')&&!['mmfk:last','mmfk:auto','mmfk:signed','mmfk:email'].includes(k))}
@@ -511,5 +511,5 @@ async function ex(k){try{
 Object.assign(A,{signin:signIn,root:addRoot,addpage:openPageTypePicker,add_mindmap_page:()=>addPage('mindmap'),add_table_page:()=>addPage('table'),workspace_mindmap:openMindMapWorkspace,workspace_table:newTableWorkspace, signup:()=>{$('#mb').innerHTML='<h2>Create your account</h2><p>Line MindMap uses your Google account — there is no separate password. Your maps are saved in your own Google Drive.</p><button class="btn p" data-a="signin">Continue with Google</button><a class="btn" style="display:block;text-align:center;text-decoration:none;margin-top:8px;padding:10px" target="_blank" rel="noopener" href="https://accounts.google.com/signup">No Google account yet? Create one free</a>';$('#mod').classList.add('on')}});
 if(localStorage['mmfk:email'])$('#wsign').textContent='Continue as '+localStorage['mmfk:email'];
 // ---------- init
-(function(){const l=localStorage['mmfk:last'];try{if(l&&localStorage['mmfk:'+l]){M=norm(JSON.parse(localStorage['mmfk:'+l]));sel=M.root;view=M.pages[M.cur].view||view}}catch(e){}if(!M){newMap()}hist=[snap()];sync_ui();render(1);setSt('Auto-save off — press Save','')})();
+(function(){const l=localStorage['mmfk:last'];try{if(l&&localStorage['mmfk:'+l]){M=norm(JSON.parse(localStorage['mmfk:'+l]));sel=M.root;view=M.pages[M.cur].view||view}}catch(e){}if(!M){newMap()}hist=[snap()];sync_ui();render(1);setSt(auto?'Auto-save on':'Auto-save off — press Save',auto?'ok':'');})();
 </script></body></html>
