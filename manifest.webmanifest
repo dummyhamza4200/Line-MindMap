@@ -1,0 +1,12 @@
+{
+  "name": "Line MindMap",
+  "short_name": "Line MindMap",
+  "description": "A browser-based medical study workspace for mind maps, structured tables, notes, revision, images, and exports.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2AA8DF",
+  "lang": "en",
+  "icons": [{"src": "/brand.svg","sizes": "64x64","type": "image/svg+xml","purpose": "any maskable"}]
+}
